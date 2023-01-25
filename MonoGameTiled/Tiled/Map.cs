@@ -18,8 +18,8 @@ namespace Tiled
         private static readonly string TileLayerType = "tilelayer";
         private static readonly string ObjectLayerType = "objectlayer";
 
+        private int[] gidToTilesetIndices;
         private HashSet<uint> renderLayerIds = new();
-        private Tileset Empty;
         private string directory;
 
         public Map(string filePath)
@@ -28,33 +28,11 @@ namespace Tiled
             directory = Path.GetDirectoryName(filePath);
         }
 
-        // TODO: Override me
+        // TODO: Override my value
         public float LayerDepth { get; set; } = 0.5f;
 
-        public void Initialize(Action<TileObject> objectHandler, Func<string, Texture2D> imagePathHandler,
-            GraphicsDevice graphicsDevice)
+        public void Initialize(Action<TileObject> objectHandler, Func<string, Texture2D> imagePathHandler)
         {
-            Texture2D blank = new(graphicsDevice, 1, 1);
-            blank.SetData(new Color[] { new(0, 0, 0, 0) });
-            Initialize(objectHandler, imagePathHandler, blank);
-        }
-
-        public void Initialize(Action<TileObject> objectHandler, Func<string, Texture2D> imagePathHandler,
-            Texture2D blank)
-        {
-            Empty = new()
-            {
-                Columns = 1, // Prevent divide by 0
-                Texture = blank, // Prevent NPE
-                FirstGid = 0, // Prevent invalid array access
-                Tiles = new Tile[] // Prevent invalid array access
-                {
-                    new()
-                    {
-                        ImageRect = new(0, 0, 0, 0) // Prevent texture from being visible
-                    }
-                }
-            };
             InitializeLayers(objectHandler);
             InitializeTilesets(imagePathHandler);
         }
@@ -71,7 +49,10 @@ namespace Tiled
                 for (int i = 0; i < data.Length; i++)
                 {
                     uint gid = data[i];
-                    ref Tileset tileset = ref GetTilesetFromGid(gid);
+
+                    if (gid == 0) continue;
+
+                    ref Tileset tileset = ref Tilesets[gidToTilesetIndices[gid]];
                     ref Tile tile = ref tileset.Tiles[tileset.GidToId(gid)];
 
                     destinationRectangle.X = (i % layer.Width) * TileWidth;
@@ -125,6 +106,8 @@ namespace Tiled
 
         private void InitializeTilesets(Func<string, Texture2D> imagePathHandler)
         {
+            uint maxGid = 0;
+
             // Copy tilesets using the source
             for (int i = 0; i < Tilesets.Length; i++)
             {
@@ -133,6 +116,23 @@ namespace Tiled
 
                 tileset = Serializer.DeserializeFromFilePath<Tileset>(Path.Combine(directory, tileset.Source));
                 tileset.FirstGid = firstGid;
+
+                maxGid = (uint)Math.Max(maxGid, firstGid + tileset.TileCount + 1);
+            }
+
+            // Initialize the GID to tileset index map for fast tileset access
+            gidToTilesetIndices = new int[maxGid];
+
+            for (int i = 0; i < Tilesets.Length; i++)
+            {
+                ref Tileset tileset = ref Tilesets[i];
+                uint firstGid = tileset.FirstGid;
+                uint lastGid = (uint)(tileset.FirstGid + tileset.TileCount);
+
+                for (uint j = firstGid; j <= lastGid; j++)
+                {
+                    gidToTilesetIndices[j] = i;
+                }
             }
 
             // Assign the tilesets texture using the image path handler
@@ -155,27 +155,12 @@ namespace Tiled
                 // Calculate the new data
                 for (int j = 0; j < newTiles.Length; j++)
                 {
-                    newTiles[j].ImageRect = tileset.GetSourceRectangleFromId(j);
+                    newTiles[j].ImageRect = tileset.GetImageRectFromId(j);
                     newTiles[j].Id = (uint)j;
                 }
 
                 tileset.Tiles = newTiles;
             }
-        }
-
-        private ref Tileset GetTilesetFromGid(uint id)
-        {
-            for (int i = 0; i < Tilesets.Length; i++)
-            {
-                ref Tileset tileset = ref Tilesets[i];
-
-                if (tileset.ContainsGid(id))
-                {
-                    return ref tileset;
-                }
-            }
-
-            return ref Empty;
         }
     }
 }

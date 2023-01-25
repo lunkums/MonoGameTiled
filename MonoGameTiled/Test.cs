@@ -28,10 +28,9 @@ namespace MonoGameTiled
             // Instantiate the tilemap by passing in the file path to a Tiled tilemap, saved in JSON format
             tilemap = new("path/to/tilemap/tilemap.json");
 
-            // Initialize the tilemap by passing in your logic for initializing Tiled objects (objectHandler),
-            // your logic for loading textures from an image file path (imagePathHandler), and the graphics
-            // device so that the tilemap can create an instance of a blank texture in rendering empty tiles
-            tilemap.Initialize(HandleObject, LoadTextureFromPath, GraphicsDevice);
+            // Initialize the tilemap by passing in your logic for initializing Tiled objects (objectHandler) and
+            // your logic for loading textures from an image file path (imagePathHandler)
+            tilemap.Initialize(HandleObject, LoadTextureFromPath);
 
             base.Initialize();
         }
