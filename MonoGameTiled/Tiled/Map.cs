@@ -3,6 +3,7 @@ using Microsoft.Xna.Framework.Graphics;
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Reflection;
 
 namespace Tiled
 {
@@ -16,7 +17,7 @@ namespace Tiled
         public int Width;
 
         private static readonly string TileLayerType = "tilelayer";
-        private static readonly string ObjectLayerType = "objectlayer";
+        private static readonly string ObjectLayerType = "objectgroup";
 
         private int[] gidToTilesetIndices;
         private HashSet<uint> renderLayerIds = new();
@@ -90,12 +91,15 @@ namespace Tiled
                     for (int j = 0; j < objects.Length; j++)
                     {
                         ref TileObject tileObject = ref objects[j];
-                        string template = tileObject.Template;
+                        string templateFile = tileObject.Template;
                         
-                        if (!string.IsNullOrEmpty(template))
+                        if (!string.IsNullOrEmpty(templateFile))
                         {
-                            tileObject
-                                = Serializer.DeserializeFromFilePath<TileObject>(Path.Combine(directory, template));
+                            Template template
+                                = Serializer.DeserializeFromFilePath<Template>(Path.Combine(directory, templateFile));
+                            TileObject templateAsObject
+                                = Serializer.DeserializeFromBlob<TileObject>(template.Object.ToString());
+                            tileObject = MergeTileObjects(tileObject, templateAsObject);
                         }
 
                         objectHandler(tileObject);
@@ -161,6 +165,23 @@ namespace Tiled
 
                 tileset.Tiles = newTiles;
             }
+        }
+
+        private TileObject MergeTileObjects(TileObject a, TileObject b)
+        {
+            object boxedA = a;
+            object boxedB = b;
+            object boxedDefault = new TileObject();
+
+            foreach (FieldInfo field in typeof(TileObject).GetFields(BindingFlags.Instance | BindingFlags.Public))
+            {
+                if (field.GetValue(boxedA) == null || field.GetValue(boxedA).Equals(field.GetValue(boxedDefault)))
+                {
+                    field.SetValue(boxedA, field.GetValue(boxedB));
+                }
+            }
+
+            return (TileObject)boxedA;
         }
     }
 }

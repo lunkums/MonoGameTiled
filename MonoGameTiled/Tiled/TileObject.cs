@@ -2,6 +2,7 @@
 {
     public struct TileObject
     {
+        public Property[] Properties;
         public string Class;
         public string Template;
         public uint Id;

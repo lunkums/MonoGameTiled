@@ -14,5 +14,10 @@ namespace Tiled
         {
             JsonConvert.PopulateObject(File.ReadAllText(filePath), obj);
         }
+
+        public static T DeserializeFromBlob<T>(string blob)
+        {
+            return JsonConvert.DeserializeObject<T>(blob);
+        }
     }
 }
