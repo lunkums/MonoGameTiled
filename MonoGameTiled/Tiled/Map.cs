@@ -1,9 +1,12 @@
 ﻿using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Reflection;
+using Tiled.Serialization;
 
 namespace Tiled
 {
@@ -21,21 +24,24 @@ namespace Tiled
 
         private int[] gidToTilesetIndices;
         private HashSet<uint> renderLayerIds = new();
+        private Serializer serializer;
         private string directory;
 
         public Map(string filePath)
         {
             Serializer.CopyFromFilePath(filePath, this);
             directory = Path.GetDirectoryName(filePath);
+
+            this.serializer = serializer;
         }
 
         // TODO: Override my value
         public float LayerDepth { get; set; } = 0.5f;
 
-        public void Initialize(Action<TileObject> objectHandler, Func<string, Texture2D> imagePathHandler)
+        public void Initialize(Action<TileObject> objectHandler)
         {
             InitializeLayers(objectHandler);
-            InitializeTilesets(imagePathHandler);
+            InitializeTilesets();
         }
 
         public void Render(SpriteBatch spriteBatch)
@@ -60,7 +66,7 @@ namespace Tiled
                     destinationRectangle.Y = (i / layer.Width) * TileHeight;
                     
                     spriteBatch.Draw(
-                        tileset.Texture,
+                        tileset.Image,
                         destinationRectangle,
                         tile.ImageRect,
                         Color.White,
@@ -99,7 +105,7 @@ namespace Tiled
                                 = Serializer.DeserializeFromFilePath<Template>(Path.Combine(directory, templateFile));
                             TileObject templateAsObject
                                 = Serializer.DeserializeFromBlob<TileObject>(template.Object.ToString());
-                            tileObject = MergeTileObjects(tileObject, templateAsObject);
+                            tileObject = MergeObjects<TileObject>(tileObject, templateAsObject);
                         }
 
                         objectHandler(tileObject);
@@ -108,7 +114,7 @@ namespace Tiled
             }
         }
 
-        private void InitializeTilesets(Func<string, Texture2D> imagePathHandler)
+        private void InitializeTilesets()
         {
             uint maxGid = 0;
 
@@ -144,8 +150,6 @@ namespace Tiled
             {
                 ref Tileset tileset = ref Tilesets[i];
 
-                tileset.Texture = imagePathHandler(tileset.Image);
-
                 // Initialize the tile array
                 Tile[] newTiles = new Tile[tileset.TileCount];
                 ref Tile[] oldTiles = ref tileset.Tiles;
@@ -167,21 +171,45 @@ namespace Tiled
             }
         }
 
-        private TileObject MergeTileObjects(TileObject a, TileObject b)
+        private T MergeObjects<T>(object a, object b) where T : new()
         {
-            object boxedA = a;
-            object boxedB = b;
-            object boxedDefault = new TileObject();
+            object defaultObj = new T();
 
-            foreach (FieldInfo field in typeof(TileObject).GetFields(BindingFlags.Instance | BindingFlags.Public))
+            foreach (FieldInfo field in typeof(T).GetFields(BindingFlags.Instance | BindingFlags.Public))
             {
-                if (field.GetValue(boxedA) == null || field.GetValue(boxedA).Equals(field.GetValue(boxedDefault)))
+                if (field.FieldType == typeof(Property[]))
                 {
-                    field.SetValue(boxedA, field.GetValue(boxedB));
+                    Property[] aProps = (Property[])field.GetValue(a);
+                    Property[] bProps = (Property[])field.GetValue(b);
+
+                    for (int i = 0; i < aProps.Length; i++)
+                    {
+                        aProps[i] = MergeObjects<Property>(aProps[i], bProps[i]);
+                    }
+
+                    field.SetValue(a, aProps);
+                }
+                else if (field.DeclaringType == typeof(Property) && field.FieldType == typeof(object))
+                {
+                    JObject aProp = (JObject)field.GetValue(a);
+                    JObject bProp = (JObject)field.GetValue(b);
+
+                    foreach (JToken jToken in aProp.Properties())
+                    {
+                        if (!jToken.HasValues)
+                        {
+                        }
+                    }
+
+                    field.SetValue(a, aProp);
+                }
+                else if (field.GetValue(a) == null || field.GetValue(a).Equals(field.GetValue(defaultObj)))
+                {
+                    field.SetValue(a, field.GetValue(b));
                 }
             }
 
-            return (TileObject)boxedA;
+            return (T)a;
         }
     }
 }

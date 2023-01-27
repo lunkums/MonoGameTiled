@@ -1,9 +1,11 @@
-﻿using Microsoft.Xna.Framework;
+﻿using Disarray.Engine;
+using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
 using System.Collections.Generic;
 using System.IO;
 using Tiled;
+using Tiled.Serialization;
 
 namespace MonoGameTiled
 {
@@ -30,7 +32,7 @@ namespace MonoGameTiled
 
             // Initialize the tilemap by passing in your logic for initializing Tiled objects (objectHandler) and
             // your logic for loading textures from an image file path (imagePathHandler)
-            tilemap.Initialize(HandleObject, LoadTextureFromPath);
+            tilemap.Initialize(HandleObject);
 
             base.Initialize();
         }

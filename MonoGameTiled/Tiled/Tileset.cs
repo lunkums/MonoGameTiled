@@ -5,8 +5,7 @@ namespace Tiled
     public struct Tileset
     {
         public Tile[] Tiles;
-        public Texture2D Texture;
-        public string Image;
+        public Texture2D Image;
         public string Source;
         public uint FirstGid;
         public int Columns;
