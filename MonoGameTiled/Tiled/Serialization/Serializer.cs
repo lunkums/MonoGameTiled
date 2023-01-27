@@ -22,10 +22,5 @@ namespace Tiled.Serialization
             JsonConvert.PopulateObject(File.ReadAllText(filePath), obj,
                 new JsonSerializerSettings() { Converters = jsonConverters });
         }
-
-        public static T DeserializeFromBlob<T>(string blob)
-        {
-            return JsonConvert.DeserializeObject<T>(blob, jsonConverters);
-        }
     }
 }

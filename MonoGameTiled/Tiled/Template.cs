@@ -2,6 +2,6 @@
 {
     public struct Template
     {
-        public object Object;
+        public TileObject Object;
     }
 }
