@@ -1,10 +1,12 @@
-﻿namespace Tiled
+﻿using System;
+
+namespace Tiled
 {
     public struct Property
     {
         public string Name;
-        public string Type;
-        public string PropertyType;
+        public Type Type;
+        public Type PropertyType;
         public object Value;
     }
 }

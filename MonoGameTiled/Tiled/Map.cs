@@ -1,15 +1,17 @@
 ﻿using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
+using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Reflection;
 using Tiled.Serialization;
 
 namespace Tiled
 {
     public class Map
     {
+        public static string Directory { get; private set; }
+
         public TileLayer[] Layers;
         public Tileset[] Tilesets;
         public int TileHeight;
@@ -22,12 +24,11 @@ namespace Tiled
 
         private int[] gidToTilesetIndices;
         private HashSet<uint> renderLayerIds = new();
-        private string directory;
 
         public Map(string filePath)
         {
+            Directory = Path.GetDirectoryName(filePath);
             Serializer.CopyFromFilePath(filePath, this);
-            directory = Path.GetDirectoryName(filePath);
         }
 
         // TODO: Override my value
@@ -92,14 +93,6 @@ namespace Tiled
                     for (int j = 0; j < objects.Length; j++)
                     {
                         ref TileObject tileObject = ref objects[j];
-                        string templateFile = tileObject.Template;
-                        
-                        if (!string.IsNullOrEmpty(templateFile))
-                        {
-                            Template template
-                                = Serializer.DeserializeFromFilePath<Template>(Path.Combine(directory, templateFile));
-                            tileObject = MergeObjects<TileObject>(tileObject, template.Object);
-                        }
 
                         objectHandler(tileObject);
                     }
@@ -117,7 +110,7 @@ namespace Tiled
                 ref Tileset tileset = ref Tilesets[i];
                 uint firstGid = tileset.FirstGid;
 
-                tileset = Serializer.DeserializeFromFilePath<Tileset>(Path.Combine(directory, tileset.Source));
+                tileset = Serializer.DeserializeFromFilePath<Tileset>(Path.Combine(Directory, tileset.Source));
                 tileset.FirstGid = firstGid;
 
                 maxGid = (uint)Math.Max(maxGid, firstGid + tileset.TileCount + 1);
@@ -162,21 +155,6 @@ namespace Tiled
 
                 tileset.Tiles = newTiles;
             }
-        }
-
-        private T MergeObjects<T>(object a, object b) where T : new()
-        {
-            object defaultObj = new T();
-
-            foreach (FieldInfo field in typeof(T).GetFields(BindingFlags.Instance | BindingFlags.Public))
-            {
-                if (field.GetValue(a) == null || field.GetValue(a).Equals(field.GetValue(defaultObj)))
-                {
-                    field.SetValue(a, field.GetValue(b));
-                }
-            }
-
-            return (T)a;
         }
     }
 }
