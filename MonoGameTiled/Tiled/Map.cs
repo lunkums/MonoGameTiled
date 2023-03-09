@@ -138,6 +138,7 @@ namespace Tiled
 
                 // Initialize the tile array
                 Tile[] newTiles = new Tile[tileset.TileCount];
+                tileset.Tiles ??= Array.Empty<Tile>();
                 ref Tile[] oldTiles = ref tileset.Tiles;
 
                 // Copy the old tiles

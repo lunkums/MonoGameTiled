@@ -36,19 +36,22 @@ namespace Tiled.Serialization
                 JArray objectProps
                     = (JArray)jObject.GetValue("properties", StringComparison.OrdinalIgnoreCase);
 
-                // Merge all of the object's properties into (and overriding) the template's properties
-                foreach (JObject prop in templateProps.Cast<JObject>())
+                if (objectProps != null)
                 {
-                    foreach (JObject prop2 in objectProps.Cast<JObject>())
+                    // Merge all of the object's properties into (and overriding) the template's properties
+                    foreach (JObject prop in templateProps.Cast<JObject>())
                     {
-                        if ((string)prop.GetValue("name", StringComparison.OrdinalIgnoreCase)
-                            == (string)prop2.GetValue("name", StringComparison.OrdinalIgnoreCase))
+                        foreach (JObject prop2 in objectProps.Cast<JObject>())
                         {
-                            prop.Merge(prop2, new JsonMergeSettings()
+                            if ((string)prop.GetValue("name", StringComparison.OrdinalIgnoreCase)
+                                == (string)prop2.GetValue("name", StringComparison.OrdinalIgnoreCase))
                             {
-                                MergeNullValueHandling = MergeNullValueHandling.Ignore,
-                                PropertyNameComparison = StringComparison.OrdinalIgnoreCase 
-                            });
+                                prop.Merge(prop2, new JsonMergeSettings()
+                                {
+                                    MergeNullValueHandling = MergeNullValueHandling.Ignore,
+                                    PropertyNameComparison = StringComparison.OrdinalIgnoreCase
+                                });
+                            }
                         }
                     }
                 }
